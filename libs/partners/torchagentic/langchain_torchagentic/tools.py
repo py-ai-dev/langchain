@@ -11,16 +11,24 @@ from langchain_core.tools import BaseTool
 from pydantic import BaseModel, Field
 
 
+MAX_STATES = 1024
+MAX_ACTIONS = 256
+
+
 class TorchAgenticPlannerInput(BaseModel):
     """Input schema for TorchAgenticPlannerTool."""
 
     task: str = Field(description="A description of the planning task or goal.")
     num_states: int | None = Field(
         default=None,
+        ge=1,
+        le=MAX_STATES,
         description="Number of abstract states for the planner. Defaults to the value set at initialization.",
     )
     num_actions: int | None = Field(
         default=None,
+        ge=1,
+        le=MAX_ACTIONS,
         description="Number of abstract actions for the planner. Defaults to the value set at initialization.",
     )
     planner_type: Literal["vi", "mcts"] | None = Field(
@@ -98,6 +106,11 @@ class TorchAgenticPlannerTool(BaseTool):
                 "Install it with: pip install langchain-torchagentic"
             ) from e
 
+        if not (1 <= self.num_states <= MAX_STATES):
+            raise ValueError(f"num_states must be between 1 and {MAX_STATES}")
+        if not (1 <= self.num_actions <= MAX_ACTIONS):
+            raise ValueError(f"num_actions must be between 1 and {MAX_ACTIONS}")
+
         pt = self.planner_type
         if pt == "vi":
             self._planner = ValueIteration(
@@ -127,6 +140,11 @@ class TorchAgenticPlannerTool(BaseTool):
         S = num_states or self.num_states
         A = num_actions or self.num_actions
         pt = planner_type or self._planner_type
+
+        if not (1 <= S <= MAX_STATES):
+            raise ValueError(f"num_states must be between 1 and {MAX_STATES}")
+        if not (1 <= A <= MAX_ACTIONS):
+            raise ValueError(f"num_actions must be between 1 and {MAX_ACTIONS}")
 
         with torch.no_grad():
             reward = torch.randn(1, S, A)
